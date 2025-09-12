@@ -1,0 +1,13 @@
+# Ignore node_modules in both frontend and backend
+vue-frontend/node_modules/
+node-backend/node_modules/
+
+# (optional) ignore lock files if you don’t want them in Git
+# vue-frontend/package-lock.json
+# node-backend/package-lock.json
+
+# Logs
+*.log
+
+# Dist / build output
+dist/
