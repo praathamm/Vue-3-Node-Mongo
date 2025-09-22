@@ -109,7 +109,7 @@ export default {
         const messages = ref<Message[]>([]);
         const messageIdCounter = ref(0);
         // TODO: Replace with your actual Gemini API key
-        const geminiApiKey = ref('AIzaSyCHKf3dxXorcS6wcoxE1ZfTK_G2KzNHTvI');
+        const geminiApiKey = ref('');
         // TODO: Customize this system prompt according to your needs
         const systemPrompt = ref('Answer all questions professionally and maintain a formal tone even if the user is casual. Provide helpful, accurate, and concise responses. You are an AI assistant for a professional organization.');
 
