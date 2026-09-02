@@ -1,15 +1,19 @@
 <template>
 <div class="signup-wrapper">
+    <video autoplay loop muted class="background-video">
+        <source src="/video.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
     <div class="signup-card">
         <h2 class="title">Create Account</h2>
         <p class="subtitle">Join us today</p>
 
         <form @submit.prevent="handleSignup" class="form">
             <div class="input-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" v-model="username" placeholder="Enter username"
-                    :class="{ 'is-invalid': usernameError }" />
-                <span v-if="usernameError" class="error-text">{{ usernameError }}</span>
+                <label for="name">Name</label>
+                <input type="text" id="name" v-model="name" placeholder="Enter your full name"
+                    :class="{ 'is-invalid': nameError }" />
+                <span v-if="nameError" class="error-text">{{ nameError }}</span>
             </div>
 
             <div class="input-group">
@@ -20,10 +24,18 @@
             </div>
 
             <div class="input-group">
-                <label for="emp_code">Employee Code</label>
-                <input type="text" id="emp_code" v-model="emp_code" placeholder="Enter employee code"
-                    :class="{ 'is-invalid': empCodeError }" />
-                <span v-if="empCodeError" class="error-text">{{ empCodeError }}</span>
+                <label for="phone">Phone</label>
+                <input type="tel" id="phone" v-model="phone" placeholder="Enter 10-digit phone number" maxlength="10"
+                    :class="{ 'is-invalid': phoneError }" />
+                <span v-if="phoneError" class="error-text">{{ phoneError }}</span>
+            </div>
+
+            <div class="input-group">
+                <label for="role">Role</label>
+                <select id="role" v-model="role">
+                    <option value="Employee">Employee</option>
+                    <option value="HR">HR</option>
+                </select>
             </div>
 
             <div class="input-group">
@@ -51,7 +63,7 @@
 </template>
 
 <script lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
 
@@ -59,66 +71,76 @@ export default {
     name: "SignupPage",
     setup() {
         const router = useRouter();
-        const username = ref("");
+        const name = ref("");
         const email = ref("");
-        const emp_code = ref("");
+        const phone = ref("");
         const password = ref("");
-        const usernameError = ref("");
+        const role = ref("Employee"); // Default role
+        const nameError = ref("");
         const emailError = ref("");
-        const empCodeError = ref("");
+        const phoneError = ref("");
         const passwordError = ref("");
         const apiError = ref("");
         const successMessage = ref("");
         const loading = ref(false);
 
+        watch(phone, (newValue) => {
+            // Ensure only digits are entered and limit to 10
+            const digitsOnly = newValue.replace(/\D/g, '');
+            phone.value = digitsOnly.slice(0, 10);
+        });
+
         const validateForm = () => {
+            // Reset errors on each validation attempt
+            nameError.value = "";
+            emailError.value = "";
+            phoneError.value = "";
+            passwordError.value = "";
+
             let valid = true;
 
-            if (username.value.trim() === "") {
-                usernameError.value = "Username is required";
+            if (name.value.trim() === "") {
+                nameError.value = "Name is required";
                 valid = false;
-            } else {
-                usernameError.value = "";
             }
 
-            if (email.value.trim() === "" || !email.value.includes('@')) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.value)) {
                 emailError.value = "Valid email is required";
                 valid = false;
-            } else {
-                emailError.value = "";
             }
 
-            if (emp_code.value.trim() === "") {
-                empCodeError.value = "Employee code is required";
+            const phoneRegex = /^[0-9]{10}$/;
+            if (phone.value.trim() === "") {
+                phoneError.value = "Phone number is required";
                 valid = false;
-            } else {
-                empCodeError.value = "";
+            } else if (!phoneRegex.test(phone.value)) {
+                phoneError.value = "Phone number must be 10 digits";
+                valid = false;
             }
 
-            if (password.value.trim() === "" || password.value.length < 6) {
+            if (password.value.length < 6) {
                 passwordError.value = "Password must be at least 6 characters";
                 valid = false;
-            } else {
-                passwordError.value = "";
             }
 
             return valid;
         };
 
         const handleSignup = async () => {
+            apiError.value = "";
+            successMessage.value = "";
             if (!validateForm()) return;
 
             loading.value = true;
-            apiError.value = "";
-            successMessage.value = "";
 
             try {
                 const res = await axios.post("http://localhost:3000/register", {
-                    username: username.value,
+                    name: name.value,
                     email: email.value,
+                    phone: phone.value,
                     password: password.value,
-                    emp_code: emp_code.value,
-                    role: "user" // Always create as user
+                    role: role.value,
                 });
 
                 successMessage.value = "Account created successfully! Redirecting to login...";
@@ -136,13 +158,14 @@ export default {
         };
 
         return {
-            username,
+            name,
             email,
-            emp_code,
+            phone,
             password,
-            usernameError,
+            role,
+            nameError,
             emailError,
-            empCodeError,
+            phoneError,
             passwordError,
             apiError,
             successMessage,
@@ -159,19 +182,30 @@ export default {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-    padding: 1rem;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.background-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    z-index: -1;
 }
 
 /* Card */
 .signup-card {
-    background: #fff;
+    background: rgba(15, 52, 96, 0.5);
+    backdrop-filter: blur(10px);
     padding: 2.5rem;
     border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     width: 100%;
-    max-width: 400px;
+    max-width: 360px;
     text-align: center;
     animation: fadeIn 0.6s ease;
 }
@@ -180,12 +214,12 @@ export default {
     font-size: 1.8rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
-    color: #0f3460;
+    color: #fff;
 }
 
 .subtitle {
     font-size: 0.95rem;
-    color: #6c757d;
+    color: #e0e0e0;
     margin-bottom: 1.5rem;
 }
 
@@ -204,25 +238,43 @@ label {
     display: block;
     font-size: 0.9rem;
     margin-bottom: 0.4rem;
-    color: #333;
+    color: #e0e0e0;
 }
 
-input {
+input,
+select {
     width: 100%;
     padding: 0.8rem;
-    border: 1px solid #ddd;
+    border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 6px;
     transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    box-sizing: border-box;
 }
 
+input::placeholder {
+    color: #ccc;
+}
+
+select option {
+    background: #0f3460;
+    color: #fff;
+}
+
+select:focus,
 input:focus {
-    border-color: #0f3460;
+    border-color: #fff;
     outline: none;
-    box-shadow: 0 0 6px rgba(15, 52, 96, 0.2);
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
 }
 
 input.is-invalid {
-    border-color: #e63946;
+    border-color: #ff7b7b;
+}
+
+select.is-invalid {
+    border-color: #ff7b7b;
 }
 
 .error-text {
@@ -233,8 +285,8 @@ input.is-invalid {
 
 .error-banner {
     margin-top: 1rem;
-    background: #ffe5e5;
-    color: #e63946;
+    background: rgba(230, 57, 70, 0.5);
+    color: #fff;
     padding: 0.6rem;
     border-radius: 6px;
     font-size: 0.9rem;
@@ -242,8 +294,8 @@ input.is-invalid {
 
 .success-banner {
     margin-top: 1rem;
-    background: #e5f5e5;
-    color: #28a745;
+    background: rgba(40, 167, 69, 0.5);
+    color: #fff;
     padding: 0.6rem;
     border-radius: 6px;
     font-size: 0.9rem;
@@ -253,7 +305,7 @@ input.is-invalid {
 button.submit-btn {
     width: 100%;
     padding: 0.9rem;
-    background: #0f3460;
+    background: #1679AB;
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -263,7 +315,7 @@ button.submit-btn {
 }
 
 button.submit-btn:hover {
-    background: #16213e;
+    background: #219C90;
 }
 
 button:disabled {
@@ -275,11 +327,11 @@ button:disabled {
 .footer-text {
     font-size: 0.9rem;
     margin-top: 1rem;
-    color: #555;
+    color: #e0e0e0;
 }
 
 .login-link {
-    color: #0f3460;
+    color: #fff;
     font-weight: 600;
     text-decoration: none;
 }

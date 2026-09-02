@@ -91,7 +91,9 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, nextTick } from "vue";
+import { defineComponent, ref, onMounted, nextTick } from "vue";
+import axios from 'axios';
+import { useAuthStore } from '../stores/auth';
 
 interface Message {
     id: number;
@@ -100,16 +102,27 @@ interface Message {
     timestamp: Date;
 }
 
-export default {
+export default defineComponent({
     name: "ChatbotComponent",
-    setup() {
+    props: {
+        autoAnalyze: {
+            type: Boolean,
+            default: false
+        },
+        autoAnalyzeEmployeeStatus: {
+            type: Boolean,
+            default: false
+        }
+    },
+    setup(props) {
+        const authStore = useAuthStore();
         const isChatOpen = ref(false);
         const currentMessage = ref('');
         const isTyping = ref(false);
         const messages = ref<Message[]>([]);
         const messageIdCounter = ref(0);
         // TODO: Replace with your actual Gemini API key
-        const geminiApiKey = ref('');
+        const geminiApiKey = ref('AIzaSyCHKf3dxXorcS6wcoxE1ZfTK_G2KzNHTvI');
         // TODO: Customize this system prompt according to your needs
         const systemPrompt = ref('Answer all questions professionally and maintain a formal tone even if the user is casual. Provide helpful, accurate, and concise responses. You are an AI assistant for a professional organization.');
 
@@ -143,7 +156,7 @@ export default {
             });
         };
 
-        const callGeminiAPI = async (): Promise<string> => {
+        const callGeminiAPI = async (initialPrompt?: string): Promise<string> => {
             if (geminiApiKey.value === 'YOUR_GEMINI_API_KEY_HERE') {
                 // Return a mock response when API key is not set
                 await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
@@ -153,13 +166,21 @@ export default {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.value}`;
 
             // Build conversation history. The Gemini API requires roles to alternate, starting with 'user'.
-            // We skip the initial UI-only 'bot' greeting message in the history sent to the API.
-            const history = messages.value
-                .slice(messages.value[0]?.type === 'bot' ? 1 : 0)
-                .map((msg: Message) => ({
-                    role: msg.type === 'bot' ? 'model' : 'user',
-                    parts: [{ text: msg.text }]
-                }));
+            let history;
+            if (initialPrompt) {
+                history = [{
+                    role: 'user',
+                    parts: [{ text: initialPrompt }]
+                }];
+            } else {
+                // We skip the initial UI-only 'bot' greeting message in the history sent to the API.
+                history = messages.value
+                    .slice(messages.value[0]?.type === 'bot' ? 1 : 0)
+                    .map((msg: Message) => ({
+                        role: msg.type === 'bot' ? 'model' : 'user',
+                        parts: [{ text: msg.text }]
+                    }));
+            }
 
             const requestBody = {
                 contents: history,
@@ -233,6 +254,62 @@ export default {
             }
         };
 
+        const performInitialAnalysis = async () => {
+            isTyping.value = true;
+            try {
+                const statsResponse = await axios.get('http://localhost:3000/onboard/dashboard/stats', {
+                    headers: { 'Authorization': `Bearer ${authStore.token}` }
+                });
+
+                const dataPrompt = JSON.stringify(statsResponse.data, null, 2); // Pretty print JSON
+                const question = 'what trends do you observer in this data, tell me in short';
+                const fullPrompt = `${dataPrompt}\n\n${question}`;
+
+                const analysisResponse = await callGeminiAPI(fullPrompt);
+
+                messages.value = []; // Clear any initial messages
+                addMessage(analysisResponse, 'bot');
+                isChatOpen.value = true; // Open the chat window
+
+            } catch (error) {
+                console.error('Error during initial analysis:', error);
+                addMessage('Sorry, I could not perform the initial data analysis.', 'bot');
+                isChatOpen.value = true; // Still open to show the error
+            } finally {
+                isTyping.value = false;
+            }
+        };
+
+        const performEmployeeStatusAnalysis = async () => {
+            isTyping.value = true;
+            try {
+                if (!authStore.user?.userId) {
+                    throw new Error("User not authenticated.");
+                }
+
+                const statusResponse = await axios.get(`http://localhost:3000/onboard/status/${authStore.user.userId}`, {
+                    headers: { 'Authorization': `Bearer ${authStore.token}` }
+                });
+
+                const dataPrompt = JSON.stringify(statusResponse.data, null, 2);
+                const question = 'please instruct how do i start my onboarding process and what all is pending in short';
+                const fullPrompt = `${dataPrompt}\n\n${question}`;
+
+                const analysisResponse = await callGeminiAPI(fullPrompt);
+
+                messages.value = []; // Clear any initial messages
+                addMessage(analysisResponse, 'bot');
+                isChatOpen.value = true; // Open the chat window
+
+            } catch (error) {
+                console.error('Error during employee status analysis:', error);
+                addMessage('Sorry, I could not perform the analysis of your onboarding status.', 'bot');
+                isChatOpen.value = true; // Still open to show the error
+            } finally {
+                isTyping.value = false;
+            }
+        };
+
         const handleInput = () => {
             // Auto-resize input if needed (for future enhancement)
         };
@@ -255,8 +332,14 @@ export default {
         };
 
         onMounted(() => {
-            // Add welcome message when component is mounted
-            addMessage("Hello! How can I assist you today?", 'bot');
+            if (props.autoAnalyze) {
+                performInitialAnalysis();
+            } else if (props.autoAnalyzeEmployeeStatus) {
+                performEmployeeStatusAnalysis();
+            } else {
+                // Add welcome message when component is mounted
+                addMessage("Hello! How can I assist you today?", 'bot');
+            }
         });
 
         return {
@@ -272,7 +355,7 @@ export default {
             formatTime,
         };
     }
-}
+});
 </script>
 
 <style scoped>

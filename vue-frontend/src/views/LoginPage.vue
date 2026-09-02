@@ -1,15 +1,19 @@
 <template>
 <div class="login-wrapper">
+  <video autoplay loop muted class="background-video">
+    <source src="/video.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
   <div class="login-card">
     <h2 class="title">Welcome Back</h2>
     <p class="subtitle">Login to continue</p>
 
     <form @submit.prevent="handleLogin" class="form">
       <div class="input-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" v-model="username" placeholder="Enter username"
-          :class="{ 'is-invalid': usernameError }" />
-        <span v-if="usernameError" class="error-text">{{ usernameError }}</span>
+        <label for="email">Email</label>
+        <input type="email" id="email" v-model="email" placeholder="Enter email"
+          :class="{ 'is-invalid': emailError }" />
+        <span v-if="emailError" class="error-text">{{ emailError }}</span>
       </div>
 
       <div class="input-group">
@@ -39,25 +43,28 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
+import { useAuthStore } from "../stores/auth";
 
 export default {
   name: "LoginPage",
   setup() {
+    const authStore = useAuthStore();
     const router = useRouter();
-    const username = ref("");
+    const email = ref("");
     const password = ref("");
-    const usernameError = ref("");
+    const emailError = ref("");
     const passwordError = ref("");
     const apiError = ref("");
     const loading = ref(false);
 
     const validateForm = () => {
       let valid = true;
-      if (username.value.trim() === "") {
-        usernameError.value = "Username is required";
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.value)) {
+        emailError.value = "Valid email is required";
         valid = false;
       } else {
-        usernameError.value = "";
+        emailError.value = "";
       }
 
       if (password.value.trim() === "") {
@@ -78,15 +85,12 @@ export default {
 
       try {
         const res = await axios.post("http://localhost:3000/login", {
-          username: username.value,
+          email: email.value,
           password: password.value,
         });
 
         if (res.data.message === "Login successful") {
-          // Store token and user info in session storage
-          sessionStorage.setItem('authToken', res.data.token);
-          sessionStorage.setItem('userRole', res.data.role);
-          sessionStorage.setItem('empCode', res.data.emp_code);
+          authStore.setAuthData(res.data);
 
           router.push("/dashboard");
         }
@@ -99,9 +103,9 @@ export default {
     };
 
     return {
-      username,
+      email,
       password,
-      usernameError,
+      emailError,
       passwordError,
       apiError,
       loading,
@@ -117,19 +121,30 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-  padding: 1rem;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.background-video {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: -1;
 }
 
 /* Card */
 .login-card {
-  background: #fff;
+  background: rgba(15, 52, 96, 0.5);
+  backdrop-filter: blur(10px);
   padding: 2.5rem;
   border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   width: 100%;
-  max-width: 400px;
+  max-width: 360px;
   text-align: center;
   animation: fadeIn 0.6s ease;
 }
@@ -138,12 +153,12 @@ export default {
   font-size: 1.8rem;
   font-weight: 600;
   margin-bottom: 0.25rem;
-  color: #0f3460;
+  color: #fff;
 }
 
 .subtitle {
   font-size: 0.95rem;
-  color: #6c757d;
+  color: #e0e0e0;
   margin-bottom: 1.5rem;
 }
 
@@ -162,25 +177,31 @@ label {
   display: block;
   font-size: 0.9rem;
   margin-bottom: 0.4rem;
-  color: #333;
+  color: #e0e0e0;
 }
 
 input {
   width: 100%;
   padding: 0.8rem;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 6px;
   transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+input::placeholder {
+  color: #ccc;
 }
 
 input:focus {
-  border-color: #0f3460;
+  border-color: #fff;
   outline: none;
-  box-shadow: 0 0 6px rgba(15, 52, 96, 0.2);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
 }
 
 input.is-invalid {
-  border-color: #e63946;
+  border-color: #ff7b7b;
 }
 
 .error-text {
@@ -191,8 +212,8 @@ input.is-invalid {
 
 .error-banner {
   margin-top: 1rem;
-  background: #ffe5e5;
-  color: #e63946;
+  background: rgba(230, 57, 70, 0.5);
+  color: #fff;
   padding: 0.6rem;
   border-radius: 6px;
   font-size: 0.9rem;
@@ -202,7 +223,7 @@ input.is-invalid {
 button.submit-btn {
   width: 100%;
   padding: 0.9rem;
-  background: #0f3460;
+  background: #1679AB;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -212,7 +233,7 @@ button.submit-btn {
 }
 
 button.submit-btn:hover {
-  background: #16213e;
+  background: #219C90;
 }
 
 button:disabled {
@@ -224,11 +245,11 @@ button:disabled {
 .footer-text {
   font-size: 0.9rem;
   margin-top: 1rem;
-  color: #555;
+  color: #e0e0e0;
 }
 
 .signup-link {
-  color: #0f3460;
+  color: #fff;
   font-weight: 600;
   text-decoration: none;
 }

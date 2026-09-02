@@ -1,7 +1,7 @@
 <template>
 <div class="list-container">
     <!-- Add Employee Form (Admin Only) -->
-    <div v-if="userRole === 'admin'" class="add-employee-section">
+    <div v-if="userRole === 'HR'" class="add-employee-section">
         <h3>Add New Employee</h3>
         <form @submit.prevent="addEmployee" class="employee-form">
             <div class="form-row">
@@ -50,7 +50,7 @@
                         <p v-if="employee.created_by"><strong>Created by:</strong> {{ employee.created_by }}</p>
                     </div>
                     <div class="employee-actions">
-                        <button v-if="userRole === 'admin'" @click="startEdit(employee)" class="edit-btn">
+                        <button v-if="userRole === 'HR'" @click="startEdit(employee)" class="edit-btn">
                             Edit
                         </button>
                         <button v-if="canDelete(employee)" @click="deleteEmployee(employee._id)" class="delete-btn"
@@ -61,7 +61,7 @@
                 </div>
 
                 <!-- Edit Form -->
-                <div v-if="employee.editing && userRole === 'admin'" class="edit-form">
+                <div v-if="employee.editing && userRole === 'HR'" class="edit-form">
                     <div class="form-row">
                         <input v-model="employee.editData.name" placeholder="Name">
                         <input v-model="employee.editData.department" placeholder="Department">
@@ -88,19 +88,21 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
+import { useAuthStore } from "../stores/auth";
 
 export default {
     name: "ListTab",
     setup() {
         const router = useRouter();
+        const authStore = useAuthStore();
         const employees = ref<any[]>([]);
         const loading = ref(false);
         const error = ref("");
-        const userRole = ref(sessionStorage.getItem("userRole") || "");
-        const empCode = ref(sessionStorage.getItem("empCode") || "");
+        const userRole = computed(() => authStore.userRole);
+        const empCode = computed(() => authStore.user?.emp_code);
         const deletingId = ref("");
         const updatingId = ref("");
         const addingEmployee = ref(false);
@@ -116,7 +118,7 @@ export default {
         });
 
         const getAuthHeaders = () => {
-            const token = sessionStorage.getItem("authToken");
+            const token = authStore.token;
             return {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json"
@@ -124,7 +126,7 @@ export default {
         };
 
         const canDelete = (employee: any) => {
-            if (userRole.value === "admin") return true;
+            if (userRole.value === "HR") return true;
             return employee.created_by === empCode.value;
         };
 

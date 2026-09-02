@@ -11,10 +11,12 @@
     "@shadcn/ui": "^0.0.4",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
+    "chart.js": "^4.5.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.20.0",
+    "pinia": "^3.0.3",
     "vue": "^3.2.13",
     "vue-router": "^4.5.1"
   },

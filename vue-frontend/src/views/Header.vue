@@ -3,7 +3,7 @@
     <div class="header-content">
         <h1>Employee Dashboard</h1>
         <div class="user-info">
-            <span class="role-badge" :class="userRole">{{ userRole.toUpperCase() }}</span>
+            <span class="role-badge" :class="userRole">{{ userRole?.toUpperCase() }}</span>
             <span class="emp-code">{{ empCode }}</span>
             <button @click="handleLogout" class="logout-btn">Logout</button>
         </div>
