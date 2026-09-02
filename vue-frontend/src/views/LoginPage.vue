@@ -1,273 +1,128 @@
 <template>
-<div class="login-wrapper">
-  <video autoplay loop muted class="background-video">
-    <source src="/video.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
-  <div class="login-card">
-    <h2 class="title">Welcome Back</h2>
-    <p class="subtitle">Login to continue</p>
+<div class="page">
+  <div class="card">
+    <h2>Login</h2>
 
-    <form @submit.prevent="handleLogin" class="form">
-      <div class="input-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" v-model="email" placeholder="Enter email"
-          :class="{ 'is-invalid': emailError }" />
-        <span v-if="emailError" class="error-text">{{ emailError }}</span>
-      </div>
+    <form @submit.prevent="handleLogin">
+      <label>Email</label>
+      <input v-model="email" type="email" placeholder="Enter email" />
 
-      <div class="input-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" v-model="password" placeholder="Enter password"
-          :class="{ 'is-invalid': passwordError }" />
-        <span v-if="passwordError" class="error-text">{{ passwordError }}</span>
-      </div>
+      <label>Password</label>
+      <input v-model="password" type="password" placeholder="Enter password" />
 
-      <button type="submit" class="submit-btn" :disabled="loading">
-        <span v-if="loading">Logging in...</span>
-        <span v-else>Login</span>
+      <button type="submit" :disabled="loading">
+        {{ loading ? 'Loading...' : 'Login' }}
       </button>
-
-      <p class="footer-text">
-        Don't have an account?
-        <router-link to="/signup" class="signup-link">Sign up</router-link>
-      </p>
-
-      <p v-if="apiError" class="error-banner">{{ apiError }}</p>
     </form>
+
+    <p class="link-text">
+      Need an account?
+      <router-link to="/signup">Create one</router-link>
+    </p>
+
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   </div>
 </div>
 </template>
 
 <script lang="ts">
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-import axios from "axios";
-import { useAuthStore } from "../stores/auth";
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
+import { useAuthStore } from '../stores/auth';
 
 export default {
-  name: "LoginPage",
+  name: 'LoginPage',
   setup() {
-    const authStore = useAuthStore();
     const router = useRouter();
-    const email = ref("");
-    const password = ref("");
-    const emailError = ref("");
-    const passwordError = ref("");
-    const apiError = ref("");
+    const authStore = useAuthStore();
+    const email = ref('');
+    const password = ref('');
     const loading = ref(false);
-
-    const validateForm = () => {
-      let valid = true;
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email.value)) {
-        emailError.value = "Valid email is required";
-        valid = false;
-      } else {
-        emailError.value = "";
-      }
-
-      if (password.value.trim() === "") {
-        passwordError.value = "Password is required";
-        valid = false;
-      } else {
-        passwordError.value = "";
-      }
-
-      return valid;
-    };
+    const errorMessage = ref('');
 
     const handleLogin = async () => {
-      if (!validateForm()) return;
+      errorMessage.value = '';
+
+      if (!email.value || !password.value) {
+        errorMessage.value = 'Email and password are required.';
+        return;
+      }
 
       loading.value = true;
-      apiError.value = "";
 
       try {
-        const res = await axios.post("http://localhost:3000/login", {
+        const response = await axios.post('http://localhost:3000/login', {
           email: email.value,
           password: password.value,
         });
 
-        if (res.data.message === "Login successful") {
-          authStore.setAuthData(res.data);
-
-          router.push("/dashboard");
-        }
-      } catch (err: any) {
-        apiError.value =
-          err.response?.data?.message || "Failed to login. Try again.";
+        authStore.setAuthData(response.data);
+        router.push('/dashboard');
+      } catch (error: any) {
+        errorMessage.value = error.response?.data?.message || 'Login failed.';
       } finally {
         loading.value = false;
       }
     };
 
-    return {
-      email,
-      password,
-      emailError,
-      passwordError,
-      apiError,
-      loading,
-      handleLogin,
-    };
+    return { email, password, loading, errorMessage, handleLogin };
   },
 };
 </script>
 
 <style scoped>
-/* Page layout */
-.login-wrapper {
+.page {
+  min-height: 100vh;
   display: flex;
-  justify-content: center;
   align-items: center;
-  height: 100vh;
-  overflow: hidden;
+  justify-content: center;
+  background: #f4f4f4;
 }
 
-.background-video {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  z-index: -1;
-}
-
-/* Card */
-.login-card {
-  background: rgba(15, 52, 96, 0.5);
-  backdrop-filter: blur(10px);
-  padding: 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+.card {
   width: 100%;
-  max-width: 360px;
-  text-align: center;
-  animation: fadeIn 0.6s ease;
+  max-width: 400px;
+  background: white;
+  padding: 24px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
 }
 
-.title {
-  font-size: 1.8rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-  color: #fff;
+h2 {
+  margin: 0 0 20px;
 }
 
-.subtitle {
-  font-size: 0.95rem;
-  color: #e0e0e0;
-  margin-bottom: 1.5rem;
-}
-
-/* Form */
-.form {
+form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-}
-
-.input-group {
-  text-align: left;
-}
-
-label {
-  display: block;
-  font-size: 0.9rem;
-  margin-bottom: 0.4rem;
-  color: #e0e0e0;
+  gap: 10px;
 }
 
 input {
-  width: 100%;
-  padding: 0.8rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
-input::placeholder {
-  color: #ccc;
-}
-
-input:focus {
-  border-color: #fff;
-  outline: none;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
-}
-
-input.is-invalid {
-  border-color: #ff7b7b;
-}
-
-.error-text {
-  color: #e63946;
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
-}
-
-.error-banner {
-  margin-top: 1rem;
-  background: rgba(230, 57, 70, 0.5);
-  color: #fff;
-  padding: 0.6rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-/* Button */
-button.submit-btn {
-  width: 100%;
-  padding: 0.9rem;
-  background: #1679AB;
-  color: #fff;
+button {
+  margin-top: 10px;
+  padding: 10px;
   border: none;
-  border-radius: 6px;
-  font-size: 1rem;
+  border-radius: 4px;
+  background: #111827;
+  color: white;
   cursor: pointer;
-  transition: background 0.3s ease;
 }
 
-button.submit-btn:hover {
-  background: #219C90;
+.link-text {
+  margin-top: 14px;
+  font-size: 14px;
 }
 
-button:disabled {
-  background: #6c757d;
-  cursor: not-allowed;
-}
-
-/* Footer */
-.footer-text {
-  font-size: 0.9rem;
-  margin-top: 1rem;
-  color: #e0e0e0;
-}
-
-.signup-link {
-  color: #fff;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.signup-link:hover {
-  text-decoration: underline;
-}
-
-/* Animation */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.error {
+  margin-top: 10px;
+  color: #b91c1c;
+  font-size: 14px;
 }
 </style>

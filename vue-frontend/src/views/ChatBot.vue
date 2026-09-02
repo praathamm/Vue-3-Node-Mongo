@@ -105,13 +105,17 @@ interface Message {
 export default defineComponent({
     name: "ChatbotComponent",
     props: {
-        autoAnalyze: {
-            type: Boolean,
-            default: false
+        contextEndpoint: {
+            type: String,
+            default: ''
         },
-        autoAnalyzeEmployeeStatus: {
-            type: Boolean,
-            default: false
+        contextPrompt: {
+            type: String,
+            default: ''
+        },
+        apiBaseUrl: {
+            type: String,
+            default: 'http://localhost:3000'
         }
     },
     setup(props) {
@@ -254,18 +258,15 @@ export default defineComponent({
             }
         };
 
-        const performInitialAnalysis = async () => {
+        const performContextAnalysis = async () => {
             isTyping.value = true;
             try {
-                const statsResponse = await axios.get('http://localhost:3000/onboard/dashboard/stats', {
+                const contextResponse = await axios.get(`${props.apiBaseUrl}${props.contextEndpoint}`, {
                     headers: { 'Authorization': `Bearer ${authStore.token}` }
                 });
-
-                const dataPrompt = JSON.stringify(statsResponse.data, null, 2); // Pretty print JSON
-                const question = 'what trends do you observer in this data, tell me in short';
-                const fullPrompt = `${dataPrompt}\n\n${question}`;
-
-                const analysisResponse = await callGeminiAPI(fullPrompt);
+                const dataPrompt = JSON.stringify(contextResponse.data, null, 2);
+                const question = props.contextPrompt || 'Summarize this data and explain the most useful next steps briefly.';
+                const analysisResponse = await callGeminiAPI(`${dataPrompt}\n\n${question}`);
 
                 messages.value = []; // Clear any initial messages
                 addMessage(analysisResponse, 'bot');
@@ -274,36 +275,6 @@ export default defineComponent({
             } catch (error) {
                 console.error('Error during initial analysis:', error);
                 addMessage('Sorry, I could not perform the initial data analysis.', 'bot');
-                isChatOpen.value = true; // Still open to show the error
-            } finally {
-                isTyping.value = false;
-            }
-        };
-
-        const performEmployeeStatusAnalysis = async () => {
-            isTyping.value = true;
-            try {
-                if (!authStore.user?.userId) {
-                    throw new Error("User not authenticated.");
-                }
-
-                const statusResponse = await axios.get(`http://localhost:3000/onboard/status/${authStore.user.userId}`, {
-                    headers: { 'Authorization': `Bearer ${authStore.token}` }
-                });
-
-                const dataPrompt = JSON.stringify(statusResponse.data, null, 2);
-                const question = 'please instruct how do i start my onboarding process and what all is pending in short';
-                const fullPrompt = `${dataPrompt}\n\n${question}`;
-
-                const analysisResponse = await callGeminiAPI(fullPrompt);
-
-                messages.value = []; // Clear any initial messages
-                addMessage(analysisResponse, 'bot');
-                isChatOpen.value = true; // Open the chat window
-
-            } catch (error) {
-                console.error('Error during employee status analysis:', error);
-                addMessage('Sorry, I could not perform the analysis of your onboarding status.', 'bot');
                 isChatOpen.value = true; // Still open to show the error
             } finally {
                 isTyping.value = false;
@@ -332,10 +303,8 @@ export default defineComponent({
         };
 
         onMounted(() => {
-            if (props.autoAnalyze) {
-                performInitialAnalysis();
-            } else if (props.autoAnalyzeEmployeeStatus) {
-                performEmployeeStatusAnalysis();
+            if (props.contextEndpoint) {
+                performContextAnalysis();
             } else {
                 // Add welcome message when component is mounted
                 addMessage("Hello! How can I assist you today?", 'bot');
