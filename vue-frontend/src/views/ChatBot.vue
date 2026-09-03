@@ -125,8 +125,7 @@ export default defineComponent({
         const isTyping = ref(false);
         const messages = ref<Message[]>([]);
         const messageIdCounter = ref(0);
-        // TODO: Replace with your actual Gemini API key
-        const geminiApiKey = ref('AIzaSyCHKf3dxXorcS6wcoxE1ZfTK_G2KzNHTvI');
+        const geminiApiKey = ref(process.env.VUE_APP_GEMINI_API_KEY || 'AIzaSyCHKf3dxXorcS6wcoxE1ZfTK_G2KzNHTvI');
         // TODO: Customize this system prompt according to your needs
         const systemPrompt = ref('Answer all questions professionally and maintain a formal tone even if the user is casual. Provide helpful, accurate, and concise responses. You are an AI assistant for a professional organization.');
 
@@ -161,13 +160,11 @@ export default defineComponent({
         };
 
         const callGeminiAPI = async (initialPrompt?: string): Promise<string> => {
-            if (geminiApiKey.value === 'YOUR_GEMINI_API_KEY_HERE') {
-                // Return a mock response when API key is not set
-                await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
-                return "Please configure your Gemini API key in the component to enable AI responses.";
+            if (!geminiApiKey.value) {
+                throw new Error('Gemini API key is not configured. Set VUE_APP_GEMINI_API_KEY in vue-frontend/.env.local.');
             }
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.value}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiApiKey.value}`;
 
             // Build conversation history. The Gemini API requires roles to alternate, starting with 'user'.
             let history;
@@ -195,7 +192,7 @@ export default defineComponent({
                     temperature: 0.7,
                     topK: 1,
                     topP: 1,
-                    maxOutputTokens: 2048,
+                    maxOutputTokens: 2048
                 },
                 safetySettings: [{
                     category: "HARM_CATEGORY_HARASSMENT",
@@ -251,7 +248,8 @@ export default defineComponent({
                 addMessage(response, 'bot');
             } catch (error) {
                 console.error('Error calling Gemini API:', error);
-                addMessage('Sorry, I encountered an error while processing your request. Please try again.', 'bot');
+                const message = error instanceof Error ? error.message : 'Unknown Gemini API error';
+                addMessage(`Sorry, I could not process that request. ${message}`, 'bot');
             } finally {
                 isTyping.value = false;
                 focusInput();
@@ -286,9 +284,11 @@ export default defineComponent({
         };
 
         const formatTime = (timestamp: Date): string => {
-            return timestamp.toLocaleTimeString('en-US', {
+            return timestamp.toLocaleTimeString('en-IN', {
+                timeZone: 'Asia/Kolkata',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                hour12: true,
             });
         };
 

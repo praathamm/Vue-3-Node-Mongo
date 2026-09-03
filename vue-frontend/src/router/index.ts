@@ -2,6 +2,8 @@
 import LoginPage from '../views/LoginPage.vue';
 import SignupPage from '../views/SignupPage.vue';
 import DashboardPage from '../views/DashboardPage.vue';
+import TrackShipmentPage from '../views/TrackShipmentPage.vue';
+import ShipmentSummaryPage from '../views/ShipmentSummaryPage.vue';
 import { useAuthStore } from '../stores/auth';
 
 const routes = [
@@ -45,8 +47,22 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/track',
+    name: 'TrackShipment',
+    component: TrackShipmentPage,
+  },
+  {
+    path: '/analytics',
+    name: 'ShipmentSummary',
+    component: ShipmentSummaryPage,
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/:pathMatch(.*)*',
-    redirect: '/login',
+    redirect: () => {
+      const authStore = useAuthStore();
+      return authStore.isAuthenticated ? '/dashboard' : '/login';
+    },
   },
 ];
 
